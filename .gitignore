@@ -1,0 +1,5 @@
+.omc/
+.claude/
+# 컴파일 결과물
+a.out
+*.o
