@@ -1,100 +1,123 @@
-// ============================================================
-// Step 6 — 함수 오버로딩 (같은 이름, 다른 매개변수)
-// ============================================================
+// Step 8 — const 멤버 함수와 getter
 //
-// [지난 스텝 통과 + 참고]
+// [지난 스텝 통과] 클래스/생성자/초기화 리스트/객체 생성 모두 정확했다.
 //
-//   Step 5 통과. 세 경우 모두 정확했다.
-//     3 9 1 7 4  ->  24 / 9
-//     -5 -3 -9   ->  -17 / -3      (음수 버그 해결됨)
-//     42         ->  42 / 42       (원소 1개)
+// Step 6 에서 const std::vector<int>& 로 받으면 "안 바꾸겠다" 는 약속이
+// 된다고 했다. 그런데 약속을 받은 쪽에도 문제가 생긴다.
 //
-//   reserve 를 쓰고도 push_back 을 유지한 것, int input 을 루프 안으로
-//   넣은 것, max 초기값을 arr[0] 으로 잡은 것 모두 정확한 판단이다.
+//   void print(const Rect &r) { std::cout << r.area(); }   // ✗ 컴파일 에러
 //
-//   코드에 남긴 메모 — "n을 건들이면 다음부터는 arr.size()를 써야함"
-//     정확하다. while(n--) 이 끝나면 n 은 0 도 아니고 -1 이 되어 있다.
-//     (마지막 검사에서 0 을 읽고 false 가 된 뒤 한 번 더 빼기 때문이다.)
-//     그걸 알고 쓴 거라면 문제없다. 다만 원래 값이 필요해질 수도 있으니
-//     입력받은 값을 파괴하지 않는 for 문 쪽이 더 안전한 습관이긴 하다.
+// r 은 const 인데 area() 가 "나는 안 바꾼다" 고 말한 적이 없기 때문이다.
+// 컴파일러는 함수 몸통을 들여다보고 봐주지 않는다. 선언만 본다.
 //
-//   참고 하나 — n 이 0 이면 arr[0] 이 존재하지 않아 UB 다.
-//     지금 문제에서는 안 나오는 입력이니 넘어가도 된다.
-//     실무라면 if (arr.empty()) 를 먼저 검사한다.
+// 그래서 객체를 바꾸지 않는 멤버 함수에는 뒤에 const 를 붙인다.
 //
-// ------------------------------------------------------------
+//   int area() const { return w * h; }
+//        매개변수 괄호 뒤, 중괄호 앞이다.
+//        이 함수 안에서 멤버를 바꾸려 하면 컴파일 에러가 난다.
+//        실수로 바꾸는 것까지 컴파일러가 막아준다.
 //
-// [개념] C 에서는 함수 이름이 세상에 하나뿐이었다.
+// C 에는 이런 게 없었다. rect_area(const struct Rect *r) 처럼 포인터에
+// const 를 붙이는 게 전부였고, 그마저도 안 붙이는 코드가 대부분이었다.
 //
-//   그래서 "같은 일을 타입만 바꿔서" 하려면 이름을 다르게 지어야 했다.
+// [getter]
+//   멤버 변수가 private 이면 바깥에서 못 읽는다. 읽기만 허용하고 싶을 때
+//   값을 돌려주는 함수를 만든다. 이걸 getter 라 한다.
 //
-//     abs(int)      labs(long)     fabs(double)
-//     strcmp        strncmp        wcscmp
+//     int getWidth() const { return w; }
 //
-//   하는 일은 똑같은데 타입 때문에 이름이 갈라진다. 쓰는 쪽에서는
-//   "이 타입엔 어떤 이름이었더라" 를 계속 외워야 했다.
+//   "그냥 public 으로 두면 되지 않나" 싶지만 다르다.
+//   public 변수는 읽기와 쓰기가 같이 열린다. getter 만 두면 읽기만 열린다.
+//   나중에 저장 방식이 바뀌어도(예: w 를 없애고 계산해서 돌려주기)
+//   바깥 코드는 그대로 쓸 수 있다.
 //
-//   C++ 은 매개변수가 다르면 같은 이름을 여러 번 정의할 수 있다.
-//   이걸 오버로딩(overloading) 이라 한다.
+// [예제]
+//   class Circle {
+//       double r;
+//   public:
+//       Circle(double radius) : r(radius) {}
+//       double getR() const  { return r; }          // 읽기만
+//       double area() const  { return 3.14 * r * r; }
+//       void scale(double k) { r *= k; }            // 바꾸므로 const 없음
+//   };
 //
-//     int    square(int x)    { return x * x; }
-//     double square(double x) { return x * x; }
-//
-//     square(3);     // 위쪽 호출 -> 9
-//     square(2.5);   // 아래쪽 호출 -> 6.25
-//
-//   컴파일러가 넘긴 값의 타입을 보고 어느 것을 부를지 고른다.
-//   실행 중에 판단하는 게 아니라 컴파일 시점에 정해지므로 공짜다.
-//
-//   구분 기준은 "매개변수" 다. 개수가 달라도 되고 타입이 달라도 된다.
-//
-//     void log(const std::string &s);
-//     void log(const std::string &s, int level);   // 개수가 다름. OK
-//
-//   중요 — 반환 타입만 다른 건 오버로딩이 안 된다.
-//
-//     int  f(int x);
-//     double f(int x);      // 에러. 호출부만 봐서는 구분할 수 없다.
-//
-// [문법]
-//   int add(int a, int b)          { return a + b; }
-//   double add(double a, double b) { return a + b; }
-//   int add(int a, int b, int c)   { return a + b + c; }
-//
-//   add(1, 2);        // 첫 번째
-//   add(1.5, 2.5);    // 두 번째
-//   add(1, 2, 3);     // 세 번째
+//   void show(const Circle &c) {       // const 객체
+//       std::cout << c.area();         // OK. area 가 const 라서.
+//       // c.scale(2);                 // ✗ 에러. scale 은 const 가 아니다.
+//   }
 //
 // [힌트]
-//   - 함수는 main 위에 두면 그냥 쓸 수 있다.
-//   - 이름은 셋 다 똑같아야 한다. 다르게 지으면 이 스텝의 의미가 없다.
-//   - std::vector<int> 를 받는 버전은 매개변수를 const std::vector<int> &
-//     로 받아 보자. Step 4 에서 본 관용구다.
-//       & 를 붙이는 이유   : vector 통째로 복사되는 걸 막는다
-//       const 를 붙이는 이유: 실수로 내용을 바꾸지 않겠다는 약속
-//     참조인데도 원본이 안 바뀌니, 값으로 넘기는 것만큼 안전하면서 빠르다.
+//   - 바꾸지 않는 멤버 함수에는 전부 const 를 붙이는 게 원칙이다.
+//     나중에 붙이려면 호출부까지 줄줄이 고쳐야 하니 처음부터 붙인다.
+//   - const 객체에는 const 멤버 함수만 부를 수 있다. 반대는 자유롭다.
+//   - 값을 바꾸는 함수(scale 등)에는 붙이면 안 된다. 실제로 바꾸니까.
 //
-// ============================================================
 // [문제]
-//   sum 이라는 이름의 함수를 세 개 만들어 오버로딩하시오.
+//   Step 7 의 Rect 를 고쳐 아래를 만족시키시오.
 //
-//     1) int    sum(int, int)                     정수 두 개의 합
-//     2) double sum(double, double)               실수 두 개의 합
-//     3) int    sum(const std::vector<int> &)     벡터 전체의 합
+//   멤버 변수 (private)
+//     너비, 높이. int.
 //
-//   main 에서 셋을 모두 호출해 결과를 출력할 것.
+//   생성자
+//     Rect(int w, int h)
 //
-//   실행 예시 (입력 없음. 값은 코드에 직접 적어도 된다)
-//     3 + 5 = 8
-//     1.5 + 2.25 = 3.75
-//     {1, 2, 3, 4} = 10
+//   const 멤버 함수 (객체를 바꾸지 않는다)
+//     int  area() const        넓이
+//     int  perimeter() const   둘레
+//     bool isSquare() const    정사각형 여부
+//     int  getWidth() const    너비를 돌려준다
+//     int  getHeight() const   높이를 돌려준다
 //
-//   출력 문구는 예시와 똑같지 않아도 된다. 형식은 마음대로.
+//   const 아닌 멤버 함수 (객체를 바꾼다)
+//     void scale(int k)
+//       너비와 높이에 각각 k 를 곱한다. 돌려주는 값은 없다.
 //
-//   조건
-//     - 세 함수의 이름이 반드시 전부 sum 일 것.
-//     - 벡터 버전은 const 참조로 받을 것.
+//   자유 함수 (클래스 바깥. 멤버가 아니다)
+//     void printRect(const Rect &r)
+//       받은 사각형의 너비, 높이, 넓이, 둘레, 정사각형 여부를 출력한다.
+//       매개변수가 const 참조이므로, 여기서 부르는 멤버 함수는
+//       전부 const 여야 컴파일된다. 그게 이번 스텝의 확인 지점이다.
 //
-//   컴파일
-//     g++ -std=c++20 -Wall current.cpp -o /tmp/out && /tmp/out
-// ============================================================
+//   main
+//     3x4 객체를 만들어 printRect 로 출력한다.
+//     scale(2) 를 부른 뒤 다시 printRect 로 출력한다.
+//     5x5 객체도 하나 만들어 printRect 로 출력한다.
+//
+//   실행 예시 (문구는 자유)
+//     3x4 area 12 perimeter 14 square? no
+//     6x8 area 48 perimeter 28 square? no
+//     5x5 area 25 perimeter 20 square? yes
+//
+//   조건: printRect 는 반드시 const Rect& 로 받을 것.
+//   컴파일: g++ -std=c++20 -Wall current.cpp -o /tmp/out && /tmp/out
+
+#include <iostream>
+
+class Rect {
+private:
+    int width;
+    int height;
+public:
+    Rect(int width, int height)
+        : width(width), height(height) {}
+    
+    int area() {
+        return width * height;
+    }
+    int perimeter() {
+        return (width + height) * 2;
+    }
+    bool isSquare() {
+        return width == height;
+    }
+};
+
+int main() {
+    Rect nemo(10, 20);
+    std::cout
+        << nemo.area() << '\n'
+        << nemo.isSquare() << '\n'
+        << nemo.perimeter() << std::endl;
+
+    return 0;
+}
