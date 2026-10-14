@@ -107,10 +107,24 @@ public:
     int perimeter() {
         return (width + height) * 2;
     }
-    bool isSquare() {
-        return width == height;
+    int getWidth() {
+        return width;
     }
+    int getHeight() {
+        return height;
+    }
+
+    void scale(int k) {
+        width *= k;
+        height *= k;
+    }
+
+    
 };
+
+void printRect(const Rect &r) {
+    
+}
 
 int main() {
     Rect nemo(10, 20);
